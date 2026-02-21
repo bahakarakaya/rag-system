@@ -1,0 +1,100 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+.venv/
+venv/
+ENV/
+.env
+.env.*
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# TypeScript
+*.tsbuildinfo
+
+# Build outputs
+dist/
+build/
+
+# Logs
+logs/
+*.log
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# React
+*.env.local
+*.env.development.local
+*.env.test.local
+*.env.production.local
+
+# Prisma
+prisma/migrations/
+
+# Docker
+*.pid
+*.seed
+*.pid.lock
+
+# PostgreSQL
+*.pgsql
+*.psql
+*.db
+*.sqlite
+*.sqlite3
+
+# k6
+k6-results.json
+
+# Cloudinary (no local files, but ignore config if any)
+cloudinary.config.js
+
+# Pinecone (no local files, but ignore config if any)
+pinecone.config.js
+
+# Grafana/Prometheus (ignore local config)
+grafana.ini
+prometheus.yml
+
+# Misc
+*.swp
+*.swo
+.idea/
+*.iml
+
+# Coverage
+coverage/
+*.lcov
+
+# Others
+*.bak
+*.tmp
+*.temp
+
+# Contracts
+#contracts/*.yaml
+
+# Notebooks
+*.ipynb_checkpoints/
+
+# Redis
+dump.rdb
+
+.env
+*.env
+
+
+data/
