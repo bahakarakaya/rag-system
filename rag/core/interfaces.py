@@ -1,31 +1,6 @@
-from abc import ABC, abstractmethod, field
+from abc import ABC, abstractmethod
 from typing import Optional, Iterator
-from dataclasses import dataclass
-from datetime import datetime
-
-@dataclass
-class DocumentMetadata:
-    source: str                      # e.g., "file path", "url", "database" where the document was obtained from
-    doc_id: str
-    format: str
-    section: Optional[str] = None    # e.g., "introduction", "conclusion", "chapter 1" to provide more context about the document's content
-    page: Optional[int] = None
-    created_at: Optional[datetime] = None
-
-@dataclass
-class Document:
-    content: str
-    metadata: DocumentMetadata
-
-@dataclass
-class Chunk:
-    content: str
-    metadata: DocumentMetadata
-
-@dataclass
-class EmbeddedChunk(Chunk):
-    chunk: Chunk
-    vector: list[float]
+from .models import *
 
 
 class DocumentLoader(ABC):
@@ -38,7 +13,7 @@ class DocumentLoader(ABC):
 class Chunker(ABC):
     """Interface for splitting documents into smaller, manageable pieces (chunks) based on specified criteria."""
     @abstractmethod
-    def chunk(self, document: Document) -> list[Chunk]:
+    def chunk_by_characters(self, document: Document) -> list[Chunk]:
         ...
 
 
