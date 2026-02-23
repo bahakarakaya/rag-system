@@ -28,6 +28,6 @@ class Chunk:
     metadata: ChunkMetadata
 
 @dataclass
-class EmbeddedChunk(Chunk):
+class EmbeddedChunk:
     chunk: Chunk
     vector: list[float]
