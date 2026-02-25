@@ -1,5 +1,5 @@
 from rag.core.interfaces import Embedder
-from rag.core.models import EmbeddedChunk
+from rag.core.models import Chunk, EmbeddedChunk
 from sentence_transformers import SentenceTransformer
 
 class SentenceTransformersEmbedder(Embedder):
@@ -8,15 +8,15 @@ class SentenceTransformersEmbedder(Embedder):
         self.model = SentenceTransformer(model_name, device=device)
         self.dim = self.model.get_sentence_embedding_dimension()
 
-    def embed(self, chunks):
+    def embed(self, chunks: list[Chunk]) -> list[EmbeddedChunk]:
         print(f"Embedding {len(chunks)} chunks using model '{self.model_name}' on device '{self.model.device}' with dimension {self.dim}")
         contents = [chunk.content for chunk in chunks]
-        vectors = self.model.encode(contents)
+        vectors = self.model.encode(contents, precision="float32", show_progress_bar=True, convert_to_numpy=True, normalize_embeddings=True)
         embedded_chunks = []
         for chunk, vector in zip(chunks, vectors):
             embedded_chunks.append(EmbeddedChunk(
                 chunk=chunk,
-                vector=vector.tolist()
+                vector=vector
             ))
 
         

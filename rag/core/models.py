@@ -1,6 +1,7 @@
-from typing import Optional, Iterator
+from typing import Optional, Iterator, Union
 from dataclasses import dataclass
 from datetime import datetime
+import numpy as np
 
 @dataclass
 class DocumentMetadata:
@@ -10,6 +11,7 @@ class DocumentMetadata:
     section: Optional[str] = None    # e.g., "introduction", "conclusion", "chapter 1" to provide more context about the document's content
     page: Optional[int] = None
     created_at: Optional[datetime] = None
+    content_hash: Optional[str] = None  # SHA-256 hash of the source document's full content, used to detect changes
 
 @dataclass
 class ChunkMetadata(DocumentMetadata):
@@ -30,4 +32,4 @@ class Chunk:
 @dataclass
 class EmbeddedChunk:
     chunk: Chunk
-    vector: list[float]
+    vector: Union[list[float], np.ndarray]

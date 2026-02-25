@@ -13,7 +13,7 @@ class DocumentLoader(ABC):
 class Chunker(ABC):
     """Interface for splitting documents into smaller, manageable pieces (chunks) based on specified criteria."""
     @abstractmethod
-    def chunk_by_characters(self, document: Document) -> list[Chunk]:
+    def chunk(self, document: Document) -> list[Chunk]:
         ...
 
 
@@ -27,7 +27,7 @@ class Embedder(ABC):
 class VectorStore(ABC):
     """Interface for storing and retrieving embedded chunks based on their vector representations."""
     @abstractmethod
-    def save(self, embedded_chunks: list[EmbeddedChunk]) -> None:
+    def save(self, embedded_chunks: list[EmbeddedChunk], metadata) -> None:
         ...
     
     @abstractmethod

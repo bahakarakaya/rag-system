@@ -9,7 +9,7 @@ class FixedSizeChunker(Chunker):
         self.overlap=overlap
         self.strip_whitespace=strip_whitespace
 
-    def chunk_by_characters(self, document: Document) -> list[Chunk]:
+    def chunk(self, document: Document) -> list[Chunk]:
         """
         Splits text into chunks of characters based on character count, with optional overlap and whitespace stripping. Simple and fast approach.
         """
