@@ -5,6 +5,9 @@ from utils.db import DatabaseManager
 import numpy as np
 from pathlib import Path
 import faiss
+import logging
+
+logger = logging.getLogger(__name__)
 
 class FaissVectorStore(VectorStore):
     def __init__(self, index_type: str = "IndexFlatIP", index_path: str = None, dimension: int = 384, gpu: bool = False, db_path: str = None, index = None):
@@ -164,5 +167,5 @@ class FaissVectorStore(VectorStore):
                 )
                 results.append(chunk)
             else:
-                print(f"Warning: No metadata found for id {id}")
+                logger.warning(f"No metadata found for id {id}")
         return results
