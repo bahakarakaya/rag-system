@@ -6,7 +6,7 @@ from .models import *
 class DocumentLoader(ABC):
     """Interface for loading raw documents from various sources and converting them into a standardized format for further processing."""
     @abstractmethod
-    def load(self) -> Iterator[Document]:
+    def load(self, file_path: str) -> Document:
         ...
 
 
@@ -32,4 +32,12 @@ class VectorStore(ABC):
     
     @abstractmethod
     def search(self, query_vector: list[float], top_k: int) -> list[Chunk]:
+        ...
+
+
+class Llm(ABC):
+    """Interface for interacting with large language models to generate responses based on retrieved chunks."""
+    @abstractmethod
+    def generate(self, query: str, retrieved_chunks: list[Chunk]) -> str:
+        """Generate a response to the query grounded in the provided context chunks."""
         ...

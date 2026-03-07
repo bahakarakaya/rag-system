@@ -1,3 +1,4 @@
+from dataclasses import asdict
 from rag.core.interfaces import Chunk, Chunker, Document, ChunkMetadata
 
 class FixedSizeChunker(Chunker):
@@ -32,7 +33,7 @@ class FixedSizeChunker(Chunker):
             chunks.append(Chunk(
                 content=chunk_text,
                 metadata=ChunkMetadata(
-                    **document.metadata,
+                    **asdict(document.metadata),
                     chunk_index=chunk_index,
                     start_index=start,
                     end_index=end

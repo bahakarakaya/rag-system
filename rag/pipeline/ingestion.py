@@ -74,7 +74,7 @@ class IngestionPipeline:
 
     def _process_document(self, doc: Document):
         """Processes a single document: checks for changes, handles re-indexing if necessary, and returns the document ready for chunking."""
-        source = doc.metadata["source"]
+        source = doc.metadata.source
         current_hash = compute_content_hash(doc.content)
         is_indexed = self._store.db_manager.is_document_indexed(source)
         stored_hash = self._store.db_manager.get_stored_hash(source)
@@ -90,14 +90,14 @@ class IngestionPipeline:
         else:
             logger.info(f"New document '{source}', indexing...")
         
-        doc.metadata["content_hash"] = current_hash
+        doc.metadata.content_hash = current_hash
 
         self._ingest_document(doc)
 
     def _ingest_document(self, doc: Document):
         """Internal helper to chunk, embed, and save a single document."""
         chunks = self._chunker.chunk(doc)
-        logger.info(f"Document: {doc.metadata['doc_id']} - {len(chunks)} chunks created.")
+        logger.info(f"Document: {doc.metadata.doc_id} - {len(chunks)} chunks created.")
 
         for chunk in chunks:
             logger.debug(f"-------------------- CHUNK --------------------\n{chunk.metadata}: {chunk.content}")
@@ -143,14 +143,10 @@ class IngestionPipeline:
         
 
     def _validate_components(self, chunker, embedder, store):
-        """Validates that the specified components are supported by the pipeline."""
-        supported_chunkers = ["FixedSizeChunker"] # "SemanticChunker"
-        supported_embedders = ["SentenceTransformersEmbedder"] # "openai-embeddings"
-        supported_stores = ["FaissVectorStore"]
-
-        if chunker.__class__.__name__ not in supported_chunkers:
-            raise ValueError(f"Unsupported chunker: {chunker}. Supported chunkers: {supported_chunkers}")
-        if embedder.__class__.__name__ not in supported_embedders:
-            raise ValueError(f"Unsupported embedder: {embedder}. Supported embedders: {supported_embedders}")
-        if store.__class__.__name__ not in supported_stores:
-            raise ValueError(f"Unsupported store: {store}. Supported stores: {supported_stores}")
+        """Validates that the provided components implement the required interfaces."""
+        if not isinstance(chunker, Chunker):
+            raise TypeError(f"chunker must implement Chunker, got {type(chunker).__name__}")
+        if not isinstance(embedder, Embedder):
+            raise TypeError(f"embedder must implement Embedder, got {type(embedder).__name__}")
+        if not isinstance(store, VectorStore):
+            raise TypeError(f"store must implement VectorStore, got {type(store).__name__}")

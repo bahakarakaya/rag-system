@@ -1,14 +1,22 @@
 from rag.ingestion.chunkers import FixedSizeChunker
 from rag.ingestion.embedders import SentenceTransformersEmbedder
 from rag.stores.faiss import FaissVectorStore
-from rag.pipeline import IngestionPipeline, QueryPipeline
+from rag.generation import OllamaClient, GptClient
+from rag.pipeline import IngestionPipeline, QueryPipeline, GenerationPipeline
 from rag.core.models import Chunk
+
+from datasets import load_dataset
+from ragas import EvaluationDataset
 from utils.hashing import compute_content_hash
 from time import time
 from pathlib import Path
 import logging
 import sys
 import os
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 _log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 
@@ -26,12 +34,36 @@ logger = logging.getLogger(__name__)
 config_path = Path("data/config.json")
 
 
+prompt = """You are a question-answering assistant. Answer the user's question using ONLY the information provided in the context below.
+
+Rules:
+- Base your answer strictly on the provided context. Do not use prior knowledge or make assumptions beyond what is stated.
+- If the context does not contain sufficient information to answer the question, respond with exactly: "I don't have enough information in the provided context to answer this question." Nothing more.
+- Do not speculate or hallucinate details that are not in the context.
+- Be concise and accurate.
+
+Context:
+{context}
+
+Question: {query}
+
+Answer:"""
+
+
 def main():
 
     query_text = "What are the main components of a RAG system and how do they interact with each other?"
-    query_text_irrelevant = "How is the weather like in Izmir today?"
+    """ query_text_irrelevant = "What is the weather like in Antalya today?"
+    query_text_irrelevant = "How to start an F-16 fighter jet?"
+    query_text = query_text_irrelevant """
 
     logger.info("RAG system starting...")
+
+    logger.info("""
+    ---------------------------------
+    ----------- INGESTION -----------
+    ---------------------------------
+    """)
 
     embedder = SentenceTransformersEmbedder()
     chunker = FixedSizeChunker()
@@ -45,15 +77,30 @@ def main():
         embedder=embedder,
         store=store
     )
-    query_pipe = QueryPipeline(
-        embedder=embedder,
-        store=store
+    gen_pipe = GenerationPipeline(
+        llm=GptClient(
+            model_name="gpt-3.5-turbo",
+            api_key=os.getenv("OPENAI_API_KEY")
+        ),
+        query_pipeline=QueryPipeline(
+            embedder=embedder,
+            store=store
+        ),
+        prompt=prompt
     )
 
     ingestion_pipe.run(source_paths=["data/ai_eng_prj.txt"])
 
-    results = query_pipe.run(query_text=query_text, top_k=3)
-    
+    logger.info("""
+    ---------------------------------
+    ------------- QUERY -------------
+    ---------------------------------
+    """)
+
+    results = gen_pipe.run(question=query_text, top_k=3)
+    logger.info(f"Question: {query_text}")
+    logger.info(f"LLM GENERATED ANSWER: {results['answer'] if gen_pipe.llm.__class__ == OllamaClient else results}")
+
     if not results:
         logger.info("No results found for the relevant query. Returning empty list.")
     else:
@@ -63,37 +110,7 @@ def main():
             logger.debug(f"CONTENT: {result.content.strip()}")
             logger.debug(f"METADATA: {result.metadata}\n")
 
-    #---------------------------------------------------------------------------------------------------------------------
 
-    
-    """ print("\nPerforming search with relevant query...")
-    query_text = Chunk(content=query_text, metadata=None)
-    query_vector = embedder.embed([query_text])[0].vector
-    print(f"Query Vector (first 3 dimensions): {query_vector[:3]}")
-    results = store.search(query_vector, top_k=2)
-    print(f"Search results for query: '{query_text.content}'")
-    if not results:
-        print("No results found for the relevant query.")
-    else:
-        for i, result in enumerate(results):
-            print(f"RESULT {i+1}:")
-            print(f"CONTENT: {result.content}")
-            print(f"METADATA: {result.metadata}\n")
-    
-    print("\nPerforming search with irrelevant query...")
-    query_text_irrelevant = Chunk(content=query_text_irrelevant, metadata=None)
-    query_vector_irrelevant = embedder.embed([query_text_irrelevant])[0].vector
-    results_irrelevant = store.search(query_vector_irrelevant, top_k=2)
-    print(f"Search results for query: '{query_text_irrelevant.content}'")
-    if not results_irrelevant:
-        print("No results found for the irrelevant query.")
-    else:
-        for i, result in enumerate(results_irrelevant):
-            print(f"RESULT {i+1}:")
-            print(f"CONTENT: {result.content}")
-            print(f"METADATA: {result.metadata}\n") """
-
-        
 if __name__ == "__main__":
     start_time = time()
     main()
