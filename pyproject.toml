@@ -4,6 +4,9 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12,<3.15"
+
+[tool.poetry]
+package-mode = false
 dependencies = [
     "faiss-cpu>=1.13.2",
     "nltk>=3.9.3",
