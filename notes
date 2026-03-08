@@ -1,0 +1,75 @@
+SITUATIONS TO BE CONSIDERED:
+* HF Token for higher limits? check local model download situtaion
+* Check whether document content is changed.
+
+llm decides whether querying documents is necessary or not
+
+hybrid dil farkı etkiler mi araştır.
+
+Streamlit UI Prompt
+"""
+Title: 🔍 RAG System
+slightly faded text under: "Hybrid Search => FAISS Vector + BM25 retrieval -> Cross-encoder reranking -> LLM answer generation"
+
+⚙️ Configuration tab on the left:
+- "(emoji) Language Model" section
+For openai gpt: Provider, gpt model, openai api key(placeholder="Leave blank to use API_KEY from .env")
+
+- "🔢 Embeddings" section
+Sentence-Transformer model, Cross-encoder (reranker) selection boxes
+
+- "✂️ Chunking" section
+Chunk size (characters), Overlap (characters) sliders
+
+🔍 Retrieval
+Top-K results sliders
+
+Configuration tab ended.
+
+there will be two tabs on main view, one for "chat", one for "about" section
+on chat section: 
+there will be document ingestion part (on you) on top, chatbox-chatbot section on bottom, retrieved sources will be displayed after answer generated.
+
+on about section:
+About this RAG System
+
+This application implements a Retrieval-Augmented Generation (RAG) pipeline with a hybrid retrieval strategy.
+Architecture
+
+"""\
+Documents
+   │
+   ▼
+TextFileLoader ──► FixedSizeChunker ──► SentenceTransformers
+                                                     │
+                             ┌───────────────────────┴────────────────────────┐
+                             ▼                                                ▼
+                       FAISS VectorStore                                 BM25 Store
+                             │                                                │
+                             └──────────────────────┐  ┌──────────────────────┘
+                                                    ▼  ▼
+                                           Reciprocal Rank Fusion
+                                                     │
+                                                     ▼
+                                            Cross-Encoder Reranker
+                                                     │
+                                                     ▼
+                                               Top-K Chunks
+                                                     │
+                                                     ▼
+                                             LLM (GPT / Ollama)
+                                                     │
+                                                     ▼
+                                                   Answer"""
+Components (table)
+Component	Default
+Embedder	all-MiniLM-L6-v2
+Vector store	FAISS (cosine similarity)
+Keyword store	BM25 (rank-bm25)
+Fusion	Reciprocal Rank Fusion (RRF)
+Reranker	cross-encoder/ms-marco-MiniLM-L-6-v2
+LLM	OpenAI GPT / Ollama
+
+How to use (with number points): 
+...
+"""

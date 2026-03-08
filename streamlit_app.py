@@ -36,7 +36,7 @@ CROSS_ENCODER_MODELS = [
     "cross-encoder/ms-marco-TinyBERT-L-2-v2",
 ]
 
-GPT_MODELS = ["gpt-4o-mini", "gpt-4o", "gpt-4", "gpt-3.5-turbo"]
+GPT_MODELS = ["gpt-4o-mini", "gpt-3.5-turbo"]
 
 PROMPT_TEMPLATE = """\
 You are a question-answering assistant. Answer the user's question using ONLY \
