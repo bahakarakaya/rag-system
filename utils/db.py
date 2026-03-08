@@ -8,7 +8,7 @@ class DatabaseManager:
         else:
             db_path = Path(db_path)
         
-        self.conn = sqlite3.connect(str(db_path))
+        self.conn = sqlite3.connect(str(db_path), check_same_thread=False)
         self.cursor = self.conn.cursor()
 
     def create_metadata_table(self):
@@ -83,6 +83,23 @@ class DatabaseManager:
         self.cursor.execute("DELETE FROM metadata WHERE source = ?", (source,))
         self.conn.commit()
         return ids
+
+    def get_all_chunks(self) -> list[dict]:
+        """Returns all stored chunk rows as dicts with content and metadata fields."""
+        self.cursor.execute("""
+            SELECT content, source, doc_id, format, chunk_index, start_index, end_index, section, page, created_at 
+            FROM metadata 
+            ORDER BY source, chunk_index
+        """)
+        rows = self.cursor.fetchall()
+        return [
+            {
+                "content": r[0], "source": r[1], "doc_id": r[2], "format": r[3],
+                "chunk_index": r[4], "start_index": r[5], "end_index": r[6],
+                "section": r[7], "page": r[8], "created_at": r[9]
+            }
+            for r in rows
+        ]
 
     def get_metadata_by_id(self, id: int) -> dict:
         self.cursor.execute("SELECT content, source, doc_id, format, chunk_index, start_index, end_index, section, page, created_at FROM metadata WHERE id = ?", (int(id),))

@@ -8,12 +8,12 @@ class GenerationPipeline:
         self.query_pipeline = query_pipeline
         self.prompt = prompt
 
-    def run(self, question: str, top_k: int = 5) -> str:
-        retrieved_chunks = self.query_pipeline.run(query_text=question, top_k=top_k)
-        chunk_sources = [chunk.metadata.source for chunk in retrieved_chunks] if retrieved_chunks else ["unknown"]
+    def run(self, query: str, top_k: int = 5) -> dict:
+        retrieved_scored_chunks = self.query_pipeline.run(query_text=query, top_k=top_k)
+        chunk_sources = [scored_chunk.chunk.metadata.source for scored_chunk in retrieved_scored_chunks] if retrieved_scored_chunks else ["unknown"]
         answer = self.llm.generate(
-            query=question,
-            retrieved_chunks=retrieved_chunks,
+            query=query,
+            retrieved_chunks=retrieved_scored_chunks,
             prompt=self.prompt
         )
-        return {"answer": answer, "sources": chunk_sources}
+        return {"answer": answer, "sources": chunk_sources, "chunks": retrieved_scored_chunks}

@@ -31,7 +31,7 @@ class VectorStore(ABC):
         ...
     
     @abstractmethod
-    def search(self, query_vector: list[float], top_k: int) -> list[Chunk]:
+    def search(self, query_vector: list[float] | np.ndarray, top_k: int) -> list[ScoredChunk]:
         ...
 
 

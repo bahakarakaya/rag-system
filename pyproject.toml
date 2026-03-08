@@ -6,7 +6,10 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "faiss-cpu>=1.13.2",
+    "nltk>=3.9.3",
     "openai>=2.24.0",
+    "rank-bm25>=0.2.2",
     "requests>=2.32.5",
     "sentence-transformers>=5.2.3",
+    "streamlit>=1.55.0",
 ]

@@ -1,5 +1,5 @@
 from rag.core.interfaces import VectorStore
-from rag.core.models import Chunk, ChunkMetadata, EmbeddedChunk
+from rag.core.models import Chunk, ChunkMetadata, EmbeddedChunk, ScoredChunk
 from datetime import datetime
 from utils.db import DatabaseManager
 import numpy as np
@@ -87,6 +87,9 @@ class FaissVectorStore(VectorStore):
         Raises:
             Exception: Any exception that occurs during the database insertion or Faiss index update will be raised.
         """
+        if not embedded_chunks:
+            return
+
         try:
             ids = np.arange(self.next_id, self.next_id + len(embedded_chunks), dtype=np.int64)
 
@@ -140,14 +143,14 @@ class FaissVectorStore(VectorStore):
             raise ValueError("index_path must be provided either at construction or at persist() call")
         faiss.write_index(self.index, path)
 
-    def search(self, query_vector: np.ndarray, top_k: int) -> list[Chunk]:
+    def search(self, query_vector: np.ndarray, top_k: int) -> list[ScoredChunk]:
         query_vector = self._validate_query_vector(query_vector)
         distances, ids = self.index.search(query_vector, top_k)
         results = []
-        for dist, id in zip(distances[0], ids[0]):
-            if id == -1:
+        for dist, chunk_id in zip(distances[0], ids[0]):
+            if chunk_id == -1:
                 continue
-            metadata = self.db_manager.get_metadata_by_id(id)
+            metadata = self.db_manager.get_metadata_by_id(chunk_id)
             if metadata is not None:
                 raw_dt = metadata["created_at"]
                 created_at = datetime.fromisoformat(raw_dt) if isinstance(raw_dt, str) else raw_dt
@@ -162,10 +165,11 @@ class FaissVectorStore(VectorStore):
                         end_index=metadata["end_index"],
                         section=metadata["section"],
                         page=metadata["page"],
-                        created_at=created_at
+                        created_at=created_at,
+                        content_hash=metadata.get("content_hash")
                     )
                 )
-                results.append(chunk)
+                results.append(ScoredChunk(chunk=chunk, score=float(dist)))
             else:
-                logger.warning(f"No metadata found for id {id}")
+                logger.warning(f"No metadata found for id {chunk_id}")
         return results

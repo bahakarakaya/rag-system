@@ -1,13 +1,10 @@
 from rag.ingestion.chunkers import FixedSizeChunker
 from rag.ingestion.embedders import SentenceTransformersEmbedder
-from rag.stores.faiss import FaissVectorStore
+from rag.stores import FaissVectorStore, BM25Store, HybridRetriever
 from rag.generation import OllamaClient, GptClient
-from rag.pipeline import IngestionPipeline, QueryPipeline, GenerationPipeline
-from rag.core.models import Chunk
+from rag.pipeline import IngestionPipeline, QueryPipeline, GenerationPipeline, CrossEncoderReranker
 
-from datasets import load_dataset
-from ragas import EvaluationDataset
-from utils.hashing import compute_content_hash
+from sentence_transformers import CrossEncoder
 from time import time
 from pathlib import Path
 import logging
@@ -31,8 +28,6 @@ for _ns in ("__main__", "rag", "VectorStore", "utils"):
     logging.getLogger(_ns).setLevel(_log_level)
 
 logger = logging.getLogger(__name__)
-config_path = Path("data/config.json")
-
 
 prompt = """You are a question-answering assistant. Answer the user's question using ONLY the information provided in the context below.
 
@@ -65,17 +60,21 @@ def main():
     ---------------------------------
     """)
 
-    embedder = SentenceTransformersEmbedder()
+    embedder = SentenceTransformersEmbedder(model_name="all-MiniLM-L6-v2")
+    bm25_store = BM25Store(language="english")
+    reranker = CrossEncoderReranker(cross_encoder=CrossEncoder(model_name="cross-encoder/ms-marco-MiniLM-L-6-v2"))
     chunker = FixedSizeChunker()
     if not Path("data/index_dir/faiss_index.bin").exists():
         store = FaissVectorStore(index_path="data/index_dir/faiss_index.bin", db_path="data/index_dir/vector_store_metadata.db")
     else:
         store = FaissVectorStore.load(index_path="data/index_dir/faiss_index.bin", db_path="data/index_dir/vector_store_metadata.db")
+    retriever = HybridRetriever(vector_store=store, bm25_store=bm25_store, embedder=embedder, reranker=reranker)
 
     ingestion_pipe = IngestionPipeline(
         chunker=chunker,
         embedder=embedder,
-        store=store
+        vector_store=store,
+        bm25_store=bm25_store
     )
     gen_pipe = GenerationPipeline(
         llm=GptClient(
@@ -83,8 +82,7 @@ def main():
             api_key=os.getenv("OPENAI_API_KEY")
         ),
         query_pipeline=QueryPipeline(
-            embedder=embedder,
-            store=store
+            retriever=retriever
         ),
         prompt=prompt
     )
@@ -97,18 +95,10 @@ def main():
     ---------------------------------
     """)
 
-    results = gen_pipe.run(question=query_text, top_k=3)
+    results = gen_pipe.run(query=query_text, top_k=3)
     logger.info(f"Question: {query_text}")
-    logger.info(f"LLM GENERATED ANSWER: {results['answer'] if gen_pipe.llm.__class__ == OllamaClient else results}")
-
-    if not results:
-        logger.info("No results found for the relevant query. Returning empty list.")
-    else:
-        logger.debug(f"Search results for query: '{query_text}'")
-        for i, result in enumerate(results):
-            logger.debug(f"RESULT {i+1}:")
-            logger.debug(f"CONTENT: {result.content.strip()}")
-            logger.debug(f"METADATA: {result.metadata}\n")
+    logger.info(f"LLM GENERATED ANSWER: {results['answer']}")
+    logger.debug(f"Sources: {results['sources']}")
 
 
 if __name__ == "__main__":

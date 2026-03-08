@@ -12,17 +12,17 @@ class SentenceTransformersEmbedder(Embedder):
         self.device = device
         self.dim = self.model.get_sentence_embedding_dimension()
 
-    def embed(self, chunks: list[Chunk]) -> list[EmbeddedChunk]:
+    def embed(self, chunks: list[Chunk] | str) -> list[EmbeddedChunk]:
         logger.info(f"Embedding {len(chunks)} chunks using model '{self.model_name}' on device '{self.model.device}' with dimension {self.dim}")
+        if isinstance(chunks, str):
+            chunks = [Chunk(content=chunks, metadata=None)]
         contents = [chunk.content for chunk in chunks]
-        vectors = self.model.encode(contents, precision="float32", show_progress_bar=True, convert_to_numpy=True, normalize_embeddings=True)
+        vectors = self.model.encode(contents, precision="float32", convert_to_numpy=True, normalize_embeddings=True)
         embedded_chunks = []
         for chunk, vector in zip(chunks, vectors):
             embedded_chunks.append(EmbeddedChunk(
                 chunk=chunk,
                 vector=vector
             ))
-
-        
 
         return embedded_chunks

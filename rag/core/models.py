@@ -33,3 +33,8 @@ class Chunk:
 class EmbeddedChunk:
     chunk: Chunk
     vector: Union[list[float], np.ndarray]
+
+@dataclass
+class ScoredChunk:
+    chunk: Chunk
+    score: float
