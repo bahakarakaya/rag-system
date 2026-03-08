@@ -1,6 +1,8 @@
 # RAG System
 
-A modular Retrieval-Augmented Generation system that combines dense vector search (FAISS), sparse keyword search (BM25), and cross-encoder reranking to deliver grounded, context-aware answers from your documents.
+A modular Retrieval-Augmented Generation system that combines dense vector search (FAISS), sparse keyword search (BM25), and cross-encoder reranking to deliver grounded, context-aware answers from your documents.  
+
+Streamlit app: https://rag-system-32.streamlit.app/
 
 ## Architecture
 
@@ -99,6 +101,9 @@ The sidebar lets you configure:
 | **Top-k** | 1–20 (default 5) |
 
 Upload `.txt` files in the **Ingest Documents** tab, then switch to **Chat** to ask questions.
+
+![Chat View](chat%20view.png)
+![About View](about_view.png)
 
 ### CLI
 
