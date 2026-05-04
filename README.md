@@ -46,6 +46,7 @@ Streamlit app: https://rag-system-32.streamlit.app/
 - **Configurable components** — swap chunkers, embedders, LLM backends, and retrieval parameters
 - **Interactive UI** — Streamlit app with document upload, configurable settings, and chat with source inspection
 - **CLI mode** — `main.py` for scripted or terminal-based usage
+- **Observability (Langfuse)** — optional Trace/Span/Generation tracking across ingestion, retrieval, and LLM calls
 - **RAGAS evaluation** (to be added) — built-in evaluation pipeline for faithfulness, answer relevancy, and context precision
 
 ## Requirements
@@ -79,7 +80,23 @@ Create a `.env` file in the project root:
 ```env
 OPENAI_API_KEY=your-api-key-here
 LOG_LEVEL=INFO    # DEBUG, INFO, WARNING, ERROR
+
+# Optional Langfuse tracing
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+LANGFUSE_HOST=https://cloud.langfuse.com
+# LANGFUSE_BASE_URL=https://cloud.langfuse.com
 ```
+
+## Observability (Langfuse)
+
+Langfuse tracing is optional and enabled only when keys are provided.
+
+- Entry points create root Trace spans in [main.py](main.py) and [streamlit_app.py](streamlit_app.py)
+- Pipelines and core steps add spans in [rag/pipeline/ingestion.py](rag/pipeline/ingestion.py), [rag/pipeline/query.py](rag/pipeline/query.py), [rag/pipeline/generation.py](rag/pipeline/generation.py)
+- LLM calls are logged as Generation observations in [rag/generation/gpt.py](rag/generation/gpt.py) and [rag/generation/ollama.py](rag/generation/ollama.py)
+
+For a Turkish walkthrough and practical use cases, see [LANGFUSE_GUIDE.md](LANGFUSE_GUIDE.md).
 
 ## Usage
 
@@ -141,6 +158,9 @@ rag/
 utils/
   db.py                  # SQLite metadata manager
   hashing.py             # SHA-256 content hashing
+  langfuse.py             # Optional Langfuse client + tracing helpers
+docs/
+  LANGFUSE_GUIDE.md         # Turkish Langfuse guide for this project
 main.py                  # CLI entry point
 streamlit_app.py         # Streamlit web UI
 ```

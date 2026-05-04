@@ -6,6 +6,7 @@ import numpy as np
 from pathlib import Path
 import faiss
 import logging
+from utils.langfuse import get_langfuse_client, start_observation
 
 logger = logging.getLogger(__name__)
 
@@ -144,32 +145,42 @@ class FaissVectorStore(VectorStore):
         faiss.write_index(self.index, path)
 
     def search(self, query_vector: np.ndarray, top_k: int) -> list[ScoredChunk]:
-        query_vector = self._validate_query_vector(query_vector)
-        distances, ids = self.index.search(query_vector, top_k)
-        results = []
-        for dist, chunk_id in zip(distances[0], ids[0]):
-            if chunk_id == -1:
-                continue
-            metadata = self.db_manager.get_metadata_by_id(chunk_id)
-            if metadata is not None:
-                raw_dt = metadata["created_at"]
-                created_at = datetime.fromisoformat(raw_dt) if isinstance(raw_dt, str) else raw_dt
-                chunk = Chunk(
-                    content=metadata["content"],
-                    metadata=ChunkMetadata(
-                        source=metadata["source"],
-                        doc_id=metadata["doc_id"],
-                        format=metadata["format"],
-                        chunk_index=metadata["chunk_index"],
-                        start_index=metadata["start_index"],
-                        end_index=metadata["end_index"],
-                        section=metadata["section"],
-                        page=metadata["page"],
-                        created_at=created_at,
-                        content_hash=metadata.get("content_hash")
+        langfuse = get_langfuse_client()
+        with start_observation(
+            langfuse,
+            name="faiss.search",
+            as_type="span",
+            input={"top_k": top_k, "dimension": self.dimension},
+        ) as search_span:
+            query_vector = self._validate_query_vector(query_vector)
+            distances, ids = self.index.search(query_vector, top_k)
+            results = []
+            for dist, chunk_id in zip(distances[0], ids[0]):
+                if chunk_id == -1:
+                    continue
+                metadata = self.db_manager.get_metadata_by_id(chunk_id)
+                if metadata is not None:
+                    raw_dt = metadata["created_at"]
+                    created_at = datetime.fromisoformat(raw_dt) if isinstance(raw_dt, str) else raw_dt
+                    chunk = Chunk(
+                        content=metadata["content"],
+                        metadata=ChunkMetadata(
+                            source=metadata["source"],
+                            doc_id=metadata["doc_id"],
+                            format=metadata["format"],
+                            chunk_index=metadata["chunk_index"],
+                            start_index=metadata["start_index"],
+                            end_index=metadata["end_index"],
+                            section=metadata["section"],
+                            page=metadata["page"],
+                            created_at=created_at,
+                            content_hash=metadata.get("content_hash")
+                        )
                     )
-                )
-                results.append(ScoredChunk(chunk=chunk, score=float(dist)))
-            else:
-                logger.warning(f"No metadata found for id {chunk_id}")
-        return results
+                    results.append(ScoredChunk(chunk=chunk, score=float(dist)))
+                else:
+                    logger.warning(f"No metadata found for id {chunk_id}")
+
+            if search_span is not None:
+                search_span.update(output={"result_count": len(results)})
+            return results

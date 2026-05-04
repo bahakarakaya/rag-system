@@ -6,6 +6,7 @@ from rag.ingestion.embedders import SentenceTransformersEmbedder
 from rag.stores.faiss import FaissVectorStore
 from rag.stores.bm25 import BM25Store
 from utils.hashing import compute_content_hash
+from utils.langfuse import get_langfuse_client, start_observation
 import logging
 
 logger = logging.getLogger(__name__)
@@ -56,23 +57,62 @@ class IngestionPipeline:
         if not source_paths:
             raise ValueError("No document path provided for ingestion.")
 
-        try:
-            all_documents = []
-            for source in source_paths:
-                loader = self._resolve_loader(source)
-                doc = loader.load(source)
-                all_documents.append(doc)
-    
-            new_chunks: dict[str, list] = {}
-            for doc in all_documents:
-                chunks = self._process_document(doc)
-                if chunks:
-                    new_chunks[doc.metadata.source] = chunks
+        langfuse = get_langfuse_client()
+        with start_observation(
+            langfuse,
+            name="ingestion_pipeline.run",
+            as_type="span",
+            input={"sources": source_paths, "count": len(source_paths)},
+        ) as run_span:
+            try:
+                all_documents = []
+                for source in source_paths:
+                    loader = self._resolve_loader(source)
+                    doc = loader.load(source)
+                    all_documents.append(doc)
 
-            if self._bm25_store is not None and new_chunks:
-                self._index_bm25(new_chunks)
-        except Exception as e:
-            raise RuntimeError(f"Ingestion pipeline failed: {str(e)}") from e
+                new_chunks: dict[str, list] = {}
+                processed_docs = 0
+                skipped_docs = 0
+                total_chunks = 0
+                for doc in all_documents:
+                    with start_observation(
+                        langfuse,
+                        name="ingest_document",
+                        as_type="span",
+                        input={
+                            "source": doc.metadata.source,
+                            "doc_id": doc.metadata.doc_id,
+                        },
+                    ) as doc_span:
+                        chunks = self._process_document(doc)
+                        if chunks:
+                            new_chunks[doc.metadata.source] = chunks
+                            processed_docs += 1
+                            total_chunks += len(chunks)
+                        else:
+                            skipped_docs += 1
+                        if doc_span is not None:
+                            doc_span.update(
+                                output={
+                                    "chunk_count": len(chunks),
+                                    "skipped": len(chunks) == 0,
+                                }
+                            )
+
+                if self._bm25_store is not None and new_chunks:
+                    self._index_bm25(new_chunks)
+
+                if run_span is not None:
+                    run_span.update(
+                        output={
+                            "processed_docs": processed_docs,
+                            "skipped_docs": skipped_docs,
+                            "total_chunks": total_chunks,
+                        }
+                    )
+            except Exception as e:
+                raise RuntimeError(f"Ingestion pipeline failed: {str(e)}") from e
 
     # ------------------------------------------------------------------
     # Private helpers

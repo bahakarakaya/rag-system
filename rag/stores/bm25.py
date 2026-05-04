@@ -1,5 +1,6 @@
 from rank_bm25 import BM25Okapi
 import nltk
+from utils.langfuse import get_langfuse_client, start_observation
 
 from rag.core.models import Chunk, ScoredChunk
 
@@ -40,8 +41,18 @@ class BM25Store:
         if not query.strip():
             raise ValueError("Query must not be empty.")
 
-        tokenized_query = nltk.word_tokenize(query.lower(), language=self._language)
-        scores = self._index.get_scores(tokenized_query)
-        scored_chunks = [ScoredChunk(chunk=self._chunks[i], score=float(scores[i])) for i in range(len(self._chunks))]
-        scored_chunks.sort(key=lambda x: x.score, reverse=True)
-        return scored_chunks[:top_k]
+        langfuse = get_langfuse_client()
+        with start_observation(
+            langfuse,
+            name="bm25.search",
+            as_type="span",
+            input={"query": query, "top_k": top_k},
+        ) as search_span:
+            tokenized_query = nltk.word_tokenize(query.lower(), language=self._language)
+            scores = self._index.get_scores(tokenized_query)
+            scored_chunks = [ScoredChunk(chunk=self._chunks[i], score=float(scores[i])) for i in range(len(self._chunks))]
+            scored_chunks.sort(key=lambda x: x.score, reverse=True)
+            results = scored_chunks[:top_k]
+            if search_span is not None:
+                search_span.update(output={"result_count": len(results)})
+            return results

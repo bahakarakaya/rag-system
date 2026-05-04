@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from rag.core.models import Chunk, ScoredChunk
 from rag.core.interfaces import VectorStore, Embedder
 from rag.stores import BM25Store
+from utils.langfuse import get_langfuse_client, start_observation
 
 if TYPE_CHECKING:
     from rag.pipeline import CrossEncoderReranker
@@ -20,14 +21,24 @@ class HybridRetriever:
         self._reranker = reranker
 
     def retrieve(self, query: str, top_k: int = 5) -> list[ScoredChunk]:
-        emb_query = self._embedder.embed(query)[0].vector
+        langfuse = get_langfuse_client()
+        with start_observation(
+            langfuse,
+            name="hybrid_retriever.retrieve",
+            as_type="span",
+            input={"query": query, "top_k": top_k},
+        ) as retrieve_span:
+            emb_query = self._embedder.embed(query)[0].vector
 
-        vector_hits = self._vector_store.search(emb_query, top_k=top_k*4)
-        bm25_hits = self._bm25_store.search(query, top_k=top_k*4)
-        sorted_scored_chunks = self._reciprocal_rank_fusion(vector_hits, bm25_hits, k=60)
-        
-        sorted_scored_chunks = self._reranker.rerank(query, [sc.chunk for sc in sorted_scored_chunks], top_k=top_k*2)
-        return sorted_scored_chunks[:top_k]
+            vector_hits = self._vector_store.search(emb_query, top_k=top_k*4)
+            bm25_hits = self._bm25_store.search(query, top_k=top_k*4)
+            sorted_scored_chunks = self._reciprocal_rank_fusion(vector_hits, bm25_hits, k=60)
+
+            sorted_scored_chunks = self._reranker.rerank(query, [sc.chunk for sc in sorted_scored_chunks], top_k=top_k*2)
+            results = sorted_scored_chunks[:top_k]
+            if retrieve_span is not None:
+                retrieve_span.update(output={"result_count": len(results)})
+            return results
     
     def _reciprocal_rank_fusion(self, vector_hits: list[ScoredChunk], bm25_hits: list[ScoredChunk], k: int = 60) -> list[ScoredChunk]:
         """

@@ -4,6 +4,7 @@ import tempfile
 import logging
 from pathlib import Path
 from dotenv import load_dotenv
+from utils.langfuse import get_langfuse_client, start_observation
 
 from rag.ingestion.chunkers import FixedSizeChunker
 from rag.ingestion.embedders import SentenceTransformersEmbedder
@@ -19,6 +20,8 @@ from rag.core.models import Chunk, ChunkMetadata
 from sentence_transformers import CrossEncoder
 
 load_dotenv()
+
+langfuse = get_langfuse_client()
 
 logger = logging.getLogger(__name__)
 
@@ -260,7 +263,21 @@ with chat_tab:
                             vector_store=vector_store,
                             bm25_store=bm25_store,
                         )
-                        ingestion_pipeline.run(source_paths=paths)
+                        with start_observation(
+                            langfuse,
+                            name="ingestion",
+                            as_type="span",
+                            input={
+                                "sources": paths,
+                                "count": len(paths),
+                                "embedding_model": embedding_model,
+                                "chunk_size": chunk_size,
+                                "overlap": overlap,
+                            },
+                        ) as ingestion_span:
+                            ingestion_pipeline.run(source_paths=paths)
+                            if ingestion_span is not None:
+                                ingestion_span.update(output={"ingested_count": len(paths)})
                         for f in new_files:
                             st.session_state.ingested_file_hashes.add(
                                 hashlib.md5(f.getvalue()).hexdigest()
@@ -309,9 +326,23 @@ with chat_tab:
             with st.chat_message("assistant"):
                 with st.spinner("Thinking…"):
                     try:
-                        result = generation_pipeline.run(
-                            query=prompt_input, top_k=top_k
-                        )
+                        with start_observation(
+                            langfuse,
+                            name="rag_query",
+                            as_type="span",
+                            input={
+                                "query": prompt_input,
+                                "top_k": top_k,
+                                "model": gpt_model,
+                                "embedding_model": embedding_model,
+                                "reranker_model": cross_encoder_model,
+                            },
+                        ) as query_span:
+                            result = generation_pipeline.run(
+                                query=prompt_input, top_k=top_k
+                            )
+                            if query_span is not None:
+                                query_span.update(output={"answer": result.get("answer")})
                         answer = result["answer"]
                         retrieved_chunks = result.get("chunks", [])
                     except Exception as e:

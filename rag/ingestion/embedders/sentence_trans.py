@@ -3,6 +3,7 @@ from rag.core.models import Chunk, EmbeddedChunk
 from sentence_transformers import SentenceTransformer
 import torch
 import logging
+from utils.langfuse import get_langfuse_client, start_observation
 
 logger = logging.getLogger(__name__)
 
@@ -19,13 +20,28 @@ class SentenceTransformersEmbedder(Embedder):
         logger.info(f"Embedding {len(chunks)} chunks using model '{self.model_name}' on device '{self.model.device}' with dimension {self.dim}")
         if isinstance(chunks, str):
             chunks = [Chunk(content=chunks, metadata=None)]
-        contents = [chunk.content for chunk in chunks]
-        vectors = self.model.encode(contents, precision="float32", convert_to_numpy=True, normalize_embeddings=True)
-        embedded_chunks = []
-        for chunk, vector in zip(chunks, vectors):
-            embedded_chunks.append(EmbeddedChunk(
-                chunk=chunk,
-                vector=vector
-            ))
 
-        return embedded_chunks
+        langfuse = get_langfuse_client()
+        with start_observation(
+            langfuse,
+            name="embed_chunks",
+            as_type="span",
+            input={
+                "count": len(chunks),
+                "model": self.model_name,
+                "device": str(self.device),
+            },
+        ) as embed_span:
+            contents = [chunk.content for chunk in chunks]
+            vectors = self.model.encode(contents, precision="float32", convert_to_numpy=True, normalize_embeddings=True)
+            embedded_chunks = []
+            for chunk, vector in zip(chunks, vectors):
+                embedded_chunks.append(EmbeddedChunk(
+                    chunk=chunk,
+                    vector=vector
+                ))
+
+            if embed_span is not None:
+                embed_span.update(output={"dimension": self.dim})
+
+            return embedded_chunks

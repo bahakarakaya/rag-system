@@ -1,26 +1,18 @@
-[tool.poetry]
+[project]
 name = "rag-system"
 version = "0.1.0"
 description = "RAG system with hybrid retrieval"
 readme = "README.md"
-package-mode = false
-
-[tool.poetry.dependencies]
-python = ">=3.12,<3.15"
-faiss-cpu = ">=1.13.2"
-nltk = ">=3.9.3"
-openai = ">=2.24.0"
-python-dotenv = ">=1.0.0"
-rank-bm25 = ">=0.2.2"
-requests = ">=2.32.5"
-sentence-transformers = ">=5.2.3"
-streamlit = ">=1.55.0"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[dependency-groups]
-dev = [
+requires-python = ">=3.12"
+dependencies = [
+    "faiss-cpu>=1.13.2",
+    "langfuse>=3.5.0",
+    "nltk>=3.9.3",
+    "openai>=2.24.0",
+    "python-dotenv>=1.0.0",
+    "rank-bm25>=0.2.2",
+    "requests>=2.32.5",
+    "sentence-transformers>=5.2.3",
+    "streamlit>=1.55.0",
     "python-dotenv>=1.2.2",
 ]

@@ -11,6 +11,7 @@ import logging
 import sys
 import os
 from dotenv import load_dotenv
+from utils.langfuse import get_langfuse_client, start_observation
 
 
 load_dotenv()
@@ -46,6 +47,8 @@ Answer:"""
 
 
 def main():
+
+    langfuse = get_langfuse_client()
 
     query_text = "What are the main components of a RAG system and how do they interact with each other?"
     """ query_text_irrelevant = "What is the weather like in Antalya today?"
@@ -87,7 +90,16 @@ def main():
         prompt=prompt
     )
 
-    ingestion_pipe.run(source_paths=["data/ai_eng_prj.txt"])
+    source_paths = ["data/ai_eng_prj.txt"]
+    with start_observation(
+        langfuse,
+        name="ingestion",
+        as_type="span",
+        input={"sources": source_paths, "count": len(source_paths)},
+    ) as ingestion_span:
+        ingestion_pipe.run(source_paths=source_paths)
+        if ingestion_span is not None:
+            ingestion_span.update(output={"ingested_count": len(source_paths)})
 
     logger.info("""
     ---------------------------------
@@ -95,10 +107,21 @@ def main():
     ---------------------------------
     """)
 
-    results = gen_pipe.run(query=query_text, top_k=3)
+    with start_observation(
+        langfuse,
+        name="rag_query",
+        as_type="span",
+        input={"query": query_text, "top_k": 3, "model": "gpt-3.5-turbo"},
+    ) as query_span:
+        results = gen_pipe.run(query=query_text, top_k=3)
+        if query_span is not None:
+            query_span.update(output={"answer": results.get("answer"), "sources": results.get("sources")})
     logger.info(f"Question: {query_text}")
     logger.info(f"LLM GENERATED ANSWER: {results['answer']}")
     logger.debug(f"Sources: {results['sources']}")
+
+    if langfuse is not None:
+        langfuse.flush()
 
 
 if __name__ == "__main__":

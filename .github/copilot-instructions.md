@@ -1,5 +1,5 @@
 # Project RAG System
-This project is begin developed suitable to SOLID principles and clean code practices. The codebase is organized into modules and classes that encapsulate specific functionality, making it easier to maintain and extend. The project also includes comprehensive documentation.
+This project is begin developed suitable to SOLID, DRY, KISS, YAGNI principles and clean code practices. The codebase is organized into modules and classes that encapsulate specific functionality, making it easier to maintain and extend.
 
 ## Coding Standards
 - Do not over-abstract. SOLID principles should guide structure, not force unnecessary layers. Avoid creating wrapper classes, extra modules, or indirection solely for the sake of abstraction. Only introduce new abstractions when they provide clear, tangible value.
