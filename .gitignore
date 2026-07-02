@@ -98,3 +98,4 @@ dump.rdb
 uv.lock
 
 data/
+eval_results/

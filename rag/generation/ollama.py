@@ -10,7 +10,7 @@ class OllamaClient(Llm):
         self.ollama_url = ollama_url
     
     def generate(self, query: str, retrieved_chunks: list, prompt: str) -> str:
-        context = "\n\n".join([chunk.content for chunk in retrieved_chunks])
+        context = "\n\n".join([scored_chunk.chunk.content for scored_chunk in retrieved_chunks])
         prompt = prompt.format(context=context, query=query)
 
         langfuse = get_langfuse_client()
